@@ -7,4 +7,6 @@ add_subdirectory(external/SDL)
 add_executable(vulkan-intro src/main.cpp)
 target_link_libraries(vulkan-intro 
     SDL2-static
+    Vulkan::Vulkan
     )
+find_package(Vulkan REQUIRED)
