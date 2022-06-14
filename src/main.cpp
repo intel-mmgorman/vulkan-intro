@@ -7,6 +7,33 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+    VkDebugUtilsMessageTypeFlagsEXT message_type,
+    const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
+    void* p_user_data) {
+
+    std::cerr << "validation layer: " << p_callback_data->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+
 bool checkValidationLayerSupport(const std::vector<const char*> validation_layers)
 {
     uint32_t layer_count = 0;
@@ -97,26 +124,43 @@ int main(int argc, char *argv[])
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_API_VERSION_1_0;
 
-    VkInstanceCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-    create_info.ppEnabledExtensionNames = extensions.data();
-    create_info.pApplicationInfo = &app_info;
+    VkInstanceCreateInfo create_instance_info = {};
+    create_instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_instance_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    create_instance_info.ppEnabledExtensionNames = extensions.data();
+    create_instance_info.pApplicationInfo = &app_info;
     if(enable_validation_layers)
     {
-        create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
-        create_info.ppEnabledLayerNames = validation_layers.data();
+        create_instance_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
+        create_instance_info.ppEnabledLayerNames = validation_layers.data();
     }
     else
     {
-        create_info.enabledLayerCount = 0;
+        create_instance_info.enabledLayerCount = 0;
     }
 
     VkInstance instance = {};
-    if(vkCreateInstance(&create_info, nullptr, &instance) != VK_SUCCESS)
+    if(vkCreateInstance(&create_instance_info, nullptr, &instance) != VK_SUCCESS)
     {
         std::cout << "Failed to create Vulkan instance." << std::endl;
         return 1;
+    }
+
+    //Set up debug messenger
+    VkDebugUtilsMessengerEXT debug_messenger = {};
+    if(enable_validation_layers)
+    {
+        VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        create_info.pfnUserCallback = debugCallback;
+        create_info.pUserData = nullptr; // Optional
+
+        if(CreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &debug_messenger))
+        {
+            std::cout << "Failed to set up debug messenger. " << std::endl;
+        }
     }
 
     bool running = true;
@@ -134,6 +178,10 @@ int main(int argc, char *argv[])
     }
 
     // Quit application
+    if(enable_validation_layers)
+    {
+        DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
+    }
     vkDestroyInstance(instance, nullptr);
     SDL_DestroyWindow(window);
     SDL_Quit();
