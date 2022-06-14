@@ -56,30 +56,6 @@ int main(int argc, char *argv[])
     }
     SDL_ShowWindow(window);
 
-    //Create Vulkan instance and query for extensions
-    unsigned int extension_count = 0;
-    if(!SDL_Vulkan_GetInstanceExtensions(window, &extension_count, nullptr))
-    {
-        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
-        return 1;
-    }
-    std::vector<const char*> extensions = {VK_EXT_DEBUG_REPORT_EXTENSION_NAME};
-    size_t additional_extensions_count = extensions.size();
-    extensions.resize(additional_extensions_count + extension_count);
-    if(!SDL_Vulkan_GetInstanceExtensions(window, &extension_count, extensions.data() + additional_extensions_count))
-    {
-        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
-        return 1;
-    }
-
-    VkApplicationInfo app_info = {};
-    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pApplicationName = "Hello Triangle";
-    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "No Engine";
-    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = VK_API_VERSION_1_0;
-
     //Enable validation layers
     const std::vector<const char*> validation_layers = { "VK_LAYER_KHRONOS_validation"};
     #ifdef NDEBUG
@@ -93,6 +69,33 @@ int main(int argc, char *argv[])
         std::cout << "Validation layers requested, but not available." << std::endl;
         return 1;
     }
+
+    //Create Vulkan instance and query for extensions
+    unsigned int extension_count = 0;
+    if(!SDL_Vulkan_GetInstanceExtensions(window, &extension_count, nullptr))
+    {
+        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
+        return 1;
+    }
+    std::vector<const char*> extensions = {};
+    if(!SDL_Vulkan_GetInstanceExtensions(window, &extension_count, extensions.data()))
+    {
+        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
+        return 1;
+    }
+    extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    if(enable_validation_layers)
+    {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    VkApplicationInfo app_info = {};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "Hello Triangle";
+    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.pEngineName = "No Engine";
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
