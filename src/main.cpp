@@ -55,7 +55,6 @@ class Renderer
             }
             vkDestroyInstance(instance, nullptr);
             SDL_DestroyWindow(sdl_window);
-            SDL_Quit();
        }
         //SDL
         SDL_Window *sdl_window;
@@ -78,15 +77,22 @@ class Renderer
 
 };
 
+void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create_info)
+{
+    create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    create_info.pfnUserCallback = debugCallback;
+    create_info.pUserData = nullptr; //Optional
+}
+
 bool Renderer::setupDebugMessenger()
 {
     if(enable_validation_layers)
     {
-        VkDebugUtilsMessengerCreateInfoEXT create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        create_info.pfnUserCallback = debugCallback;
+        VkDebugUtilsMessengerCreateInfoEXT create_info;
+        populateDebugMessengerCreateInfo(create_info);
         if(CreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &debug_messenger))
         {
             std::cout << "Failed to set up debug messenger. " << std::endl;
@@ -128,9 +134,9 @@ bool checkValidationLayerSupport(const std::vector<const char*> validation_layer
 bool Renderer::enableValidationLayer()
 {
     #ifdef NDEBUG
-        const bool enable_validation_layers = false;
+        enable_validation_layers = false;
     #else
-        const bool enable_validation_layers = true;
+        enable_validation_layers = true;
     #endif
 
     if(enable_validation_layers && !checkValidationLayerSupport(validation_layers))
@@ -177,14 +183,20 @@ bool Renderer::createInstance()
     create_instance_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     create_instance_info.ppEnabledExtensionNames = extensions.data();
     create_instance_info.pApplicationInfo = &app_info;
+
+
+    VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {};
     if(enable_validation_layers)
     {
         create_instance_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
         create_instance_info.ppEnabledLayerNames = validation_layers.data();
+        populateDebugMessengerCreateInfo(debug_create_info);
+        create_instance_info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debug_create_info;
     }
     else
     {
         create_instance_info.enabledLayerCount = 0;
+        create_instance_info.pNext = nullptr;
     }
 
     if(vkCreateInstance(&create_instance_info, nullptr, &instance) != VK_SUCCESS)
@@ -218,7 +230,7 @@ int main(int argc, char *argv[])
 {
     std::cout << "Hello World!" << std::endl;
 
-    Renderer renderer = {};
+    Renderer renderer;
     bool result = renderer.initAndCreateSDLWindow();
     if(!result)
     {
@@ -266,4 +278,7 @@ int main(int argc, char *argv[])
                 break;
         }
     }
+    
+    SDL_Quit();
+
 }
