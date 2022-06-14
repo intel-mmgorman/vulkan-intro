@@ -63,7 +63,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
     bool running = true;
     //Main engine loop
     while(running)
@@ -79,6 +78,7 @@ int main(int argc, char *argv[])
     }
 
     // Quit application
+    vkDestroyInstance(instance, nullptr);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
