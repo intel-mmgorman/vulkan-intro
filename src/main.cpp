@@ -74,6 +74,7 @@ class Renderer
         bool enableValidationLayer();
         bool createInstance();
         bool queryExtensions();
+        bool initVulkan();
 
 };
 
@@ -226,40 +227,50 @@ bool Renderer::initAndCreateSDLWindow()
     return true;
 }
 
+bool Renderer::initVulkan()
+{
+    bool result = initAndCreateSDLWindow();
+    if(!result)
+    {
+        return false;
+    }
+
+    SDL_ShowWindow(sdl_window);
+
+    result = enableValidationLayer();
+    if(!result)
+    {
+        return false;
+    }
+
+    //Create Vulkan instance and query for extensions
+    result = queryExtensions();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = createInstance();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = setupDebugMessenger();
+    if(!result)
+    {
+        return false;
+    }
+    
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     std::cout << "Hello World!" << std::endl;
 
     Renderer renderer;
-    bool result = renderer.initAndCreateSDLWindow();
-    if(!result)
-    {
-        return 1;
-    }
-
-    SDL_ShowWindow(renderer.sdl_window);
-
-    //Enable validation layers
-    result = renderer.enableValidationLayer();
-    if(!result)
-    {
-        return 1;
-    }
-
-    //Create Vulkan instance and query for extensions
-    result = renderer.queryExtensions();
-    if(!result)
-    {
-        return 1;
-    }
-
-    result = renderer.createInstance();
-    if(!result)
-    {
-        return 1;
-    }
-
-    result = renderer.setupDebugMessenger();
+    bool result = renderer.initVulkan();
     if(!result)
     {
         return 1;
