@@ -1,4 +1,5 @@
 #define SDL_MAIN_HANDLED
+#define VK_USE_PLATFORM_WAYLAND_KHR
 
 #include <iostream>
 #include <vector>
@@ -53,6 +54,10 @@ class Renderer
             debug_messenger = {};
             enable_validation_layers = false;
             physical_device = VK_NULL_HANDLE;
+            graphics_family = -1;
+            device = {};
+            graphics_queue = {};
+            surface = {};
        }
        ~Renderer()
        {
@@ -60,6 +65,8 @@ class Renderer
             {
                 DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
             }
+            vkDestroyDevice(device, nullptr);
+            vkDestroySurfaceKHR(instance, surface, nullptr);
             vkDestroyInstance(instance, nullptr);
             SDL_DestroyWindow(sdl_window);
        }
@@ -72,6 +79,10 @@ class Renderer
         VkDebugUtilsMessengerEXT debug_messenger;
         bool enable_validation_layers;
         VkPhysicalDevice physical_device;
+        uint32_t graphics_family;
+        VkDevice device;
+        VkQueue graphics_queue;
+        VkSurfaceKHR surface;
 
         const int screen_width = 1280;
         const int screen_height = 720;
@@ -85,6 +96,9 @@ class Renderer
         bool initVulkan();
         bool pickPhysicalDevice();
         bool isDeviceSuitable(VkPhysicalDevice);
+        bool findQueueFamilies();
+        bool createLogicalDevice();
+        bool createSurface();
 
 };
 
@@ -162,20 +176,35 @@ bool Renderer::enableValidationLayer()
     return true;
 }
 
+bool Renderer::createSurface()
+{
+
+    // VkXlibSurfaceCreateInfoKHR create_info = {};
+    // create_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+    // create_info.window = 
+    if(!SDL_Vulkan_CreateSurface(sdl_window, instance, &surface))
+    {
+        std::cout << "Failed to create SDL Vulkan surface! " << SDL_GetError() << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool Renderer::queryExtensions()
 {
     unsigned int extension_count = 0;
     if(!SDL_Vulkan_GetInstanceExtensions(sdl_window, &extension_count, nullptr))
     {
-        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
+        std::cout << "Could not get Vulkan instance extensions: " << SDL_GetError() << std::endl;
         return false;
     }
+    extensions.resize(extension_count);
     if(!SDL_Vulkan_GetInstanceExtensions(sdl_window, &extension_count, extensions.data()))
     {
-        std::cout << "Could not get Vulkan instance extensions: " <<SDL_GetError() << std::endl;
+        std::cout << "Could not get Vulkan instance extensions: " << SDL_GetError() << std::endl;
         return false;
     }
-    extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    //extensions.push_back(VK_KHR_surface);
     if(enable_validation_layers)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -238,6 +267,75 @@ bool Renderer::initAndCreateSDLWindow()
         std::cout << "Could not create window: " << SDL_GetError() << std::endl;
         return false;
     }
+    return true;
+}
+
+bool Renderer::createLogicalDevice()
+{
+    VkDeviceQueueCreateInfo queue_create_info = {};
+    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_create_info.queueFamilyIndex = graphics_family;
+    queue_create_info.queueCount = 1;
+    const float queue_priority = 1.0f;
+    queue_create_info.pQueuePriorities = &queue_priority;
+
+    VkPhysicalDeviceFeatures device_features = {};
+
+    VkDeviceCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    create_info.pQueueCreateInfos = &queue_create_info;
+    create_info.queueCreateInfoCount = 1;
+    create_info.pEnabledFeatures = &device_features;
+    create_info.enabledExtensionCount = 0;
+
+    if(enable_validation_layers)
+    {
+        create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
+        create_info.ppEnabledLayerNames = validation_layers.data();
+    }
+    else
+    {
+        create_info.enabledLayerCount = 0;
+    }
+
+    if(vkCreateDevice(physical_device, &create_info, nullptr, &device) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create logical device!" << std::endl;
+        return false;
+    }
+
+    vkGetDeviceQueue(device, graphics_family, 0, &graphics_queue);
+
+    return true;
+}
+
+bool Renderer::findQueueFamilies()
+{
+    uint32_t queue_families_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_families_count, nullptr);
+    if(queue_families_count == 0)
+    {
+        std::cout << "Physical device " << physical_device << " doesn't have any queue families!" << std::endl;
+        return false;
+    }
+
+    std::vector<VkQueueFamilyProperties> queue_families(queue_families_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_families_count, &queue_families[0]);
+    int i = 0;
+    for(const auto& queue_family : queue_families)
+    {
+        if((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queue_family.queueCount > 0))
+        {
+            graphics_family = i;
+        }
+        i++;
+    }
+    if(graphics_family == -1)
+    {
+        std::cout << "Could not find appropriate queue family!" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -323,6 +421,24 @@ bool Renderer::initVulkan()
     }
 
     result = pickPhysicalDevice();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = findQueueFamilies();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = createLogicalDevice();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = createSurface();
     if(!result)
     {
         return false;
