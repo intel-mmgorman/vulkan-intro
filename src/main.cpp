@@ -243,6 +243,16 @@ bool Renderer::initAndCreateSDLWindow()
 
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 {
+    // VkPhysicalDeviceProperties device_properties = {};
+    // vkGetPhysicalDeviceProperties(device, &device_properties);
+
+    // VkPhysicalDeviceFeatures device_features = {};
+    // vkGetPhysicalDeviceFeatures(device, &device_features);
+
+    // return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+    //     device_features.geometryShader;
+    
+    //For Hello Triangle, GPU only needs to have Vulkan support
     return true;
 }
 
