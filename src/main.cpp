@@ -16,6 +16,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
     std::cerr << "validation layer: " << p_callback_data->pMessage << std::endl;
 
+    if(message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT 
+        || message_severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    {
+        std::cout << "WARNING/ERROR" << std::endl;
+    }
+
     return VK_FALSE;
 }
 
@@ -46,6 +52,7 @@ class Renderer
             extensions = {};
             debug_messenger = {};
             enable_validation_layers = false;
+            physical_device = VK_NULL_HANDLE;
        }
        ~Renderer()
        {
@@ -64,17 +71,20 @@ class Renderer
         std::vector<const char*> extensions;
         VkDebugUtilsMessengerEXT debug_messenger;
         bool enable_validation_layers;
+        VkPhysicalDevice physical_device;
 
         const int screen_width = 1280;
         const int screen_height = 720;
 
         bool initAndCreateSDLWindow();
-        bool createInstance(bool enable_validation_layers, std::vector<const char*> extensions, const std::vector<const char*> validation_layers);
+        bool createInstance(bool, std::vector<const char*>, const std::vector<const char*>);
         bool setupDebugMessenger();
         bool enableValidationLayer();
         bool createInstance();
         bool queryExtensions();
         bool initVulkan();
+        bool pickPhysicalDevice();
+        bool isDeviceSuitable(VkPhysicalDevice);
 
 };
 
@@ -82,8 +92,12 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create
 {
     create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT 
+                                | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT 
+                                | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT 
+                            | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT 
+                            |VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     create_info.pfnUserCallback = debugCallback;
     create_info.pUserData = nullptr; //Optional
 }
@@ -227,6 +241,43 @@ bool Renderer::initAndCreateSDLWindow()
     return true;
 }
 
+bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
+{
+    return true;
+}
+
+bool Renderer::pickPhysicalDevice()
+{
+    //Find all physical GPUs on host
+    uint32_t device_count = 0;
+    vkEnumeratePhysicalDevices(instance, &device_count, nullptr);
+    if(device_count == 0)
+    {
+        std::cout << "Failed to find GPUs with Vulkan support!" << std::endl;
+        return false;
+    }
+    std::vector<VkPhysicalDevice> devices(device_count);
+    vkEnumeratePhysicalDevices(instance, &device_count, devices.data());
+
+    //Evaluate GPUs
+    for(const auto& device: devices)
+    {
+        if(isDeviceSuitable(device))
+        {
+            physical_device = device;
+            break;
+        }
+    }
+
+    if(physical_device == VK_NULL_HANDLE)
+    {
+        std::cout << "Filed to find a suitable GPU!" << std::endl;
+        return false;
+    }
+ 
+    return true;
+}
+
 bool Renderer::initVulkan()
 {
     bool result = initAndCreateSDLWindow();
@@ -243,7 +294,6 @@ bool Renderer::initVulkan()
         return false;
     }
 
-    //Create Vulkan instance and query for extensions
     result = queryExtensions();
     if(!result)
     {
@@ -261,7 +311,13 @@ bool Renderer::initVulkan()
     {
         return false;
     }
-    
+
+    result = pickPhysicalDevice();
+    if(!result)
+    {
+        return false;
+    }
+
     return true;
 }
 
