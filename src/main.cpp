@@ -5,19 +5,16 @@
 #include <vector>
 #include <set>
 #include <cstring>
+#include <optional>
 #include <vulkan/vulkan.h>
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
 struct QueueFamilyIndices
 {
-    uint32_t graphics_family = -1;
-    uint32_t present_family = -1;
-
-    bool isComplete() {
-
-        return (graphics_family!= -1) && (present_family != -1);
-    }
+    //Support is required by the spec, so it's okay to set these to 0
+    uint32_t graphics_family = 0;
+    uint32_t present_family = 0;
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -356,21 +353,7 @@ bool Renderer::findQueueFamilies()
         {
             indices.present_family = i;
         }
-        if(indices.graphics_family != -1 && indices.present_family != -1)
-        {
-            break;
-        }
         i++;
-    }
-    if(indices.graphics_family == -1)
-    {
-        std::cout << "Could not find appropriate graphics queue family!" << std::endl;
-        return false;
-    }
-    if(indices.present_family == -1)
-    {
-        std::cout << "Could not find appropriate present queue family!" << std::endl;
-        return false;
     }
 
     return true;
@@ -406,8 +389,7 @@ bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
     //     device_features.geometryShader;
     //QueueFamilyIndices qindices = findQueueFamilies(device);
     bool extensions_supported = checkDeviceExtensionSupport(device);
-    bool result = indices.isComplete();
-    return extensions_supported && result;
+    return extensions_supported;
 }
 
 bool Renderer::pickPhysicalDevice()
