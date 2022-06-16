@@ -9,6 +9,16 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
+struct QueueFamilyIndices
+{
+    uint32_t graphics_family = -1;
+    uint32_t present_family = -1;
+
+    bool isComplete() {
+
+        return (graphics_family!= -1) && (present_family != -1);
+    }
+};
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -55,8 +65,8 @@ class Renderer
             debug_messenger = {};
             enable_validation_layers = false;
             physical_device = VK_NULL_HANDLE;
-            graphics_family = -1;
-            present_family = -1;
+            // graphics_family = -1;
+            // present_family = -1;
             device = {};
             graphics_queue = {};
             surface = {};
@@ -81,12 +91,14 @@ class Renderer
         VkDebugUtilsMessengerEXT debug_messenger;
         bool enable_validation_layers;
         VkPhysicalDevice physical_device;
-        uint32_t graphics_family;
-        uint32_t present_family;
+        QueueFamilyIndices indices;
+        // uint32_t graphics_family;
+        // uint32_t present_family;
         VkDevice device;
         VkQueue graphics_queue;
         VkSurfaceKHR surface;
         VkQueue present_queue;
+        const std::vector<const char*> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
         const int screen_width = 1280;
         const int screen_height = 720;
@@ -103,6 +115,7 @@ class Renderer
         bool findQueueFamilies();
         bool createLogicalDevice();
         bool createSurface();
+        bool checkDeviceExtensionSupport(VkPhysicalDevice);
 
 };
 
@@ -182,10 +195,6 @@ bool Renderer::enableValidationLayer()
 
 bool Renderer::createSurface()
 {
-
-    // VkXlibSurfaceCreateInfoKHR create_info = {};
-    // create_info.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-    // create_info.window = 
     if(!SDL_Vulkan_CreateSurface(sdl_window, instance, &surface))
     {
         std::cout << "Failed to create SDL Vulkan surface! " << SDL_GetError() << std::endl;
@@ -277,7 +286,7 @@ bool Renderer::initAndCreateSDLWindow()
 bool Renderer::createLogicalDevice()
 {
     std::vector<VkDeviceQueueCreateInfo> queue_create_infos = {};
-    std::set<uint32_t> unique_queue_families = {graphics_family, present_family};
+    std::set<uint32_t> unique_queue_families = {indices.graphics_family, indices.present_family};
     const float queue_priority = 1.0f;
     for(uint32_t queue_family : unique_queue_families)
     {
@@ -315,8 +324,8 @@ bool Renderer::createLogicalDevice()
         return false;
     }
 
-    vkGetDeviceQueue(device, graphics_family, 0, &graphics_queue);
-    vkGetDeviceQueue(device, present_family, 0, &present_queue);
+    vkGetDeviceQueue(device, indices.graphics_family, 0, &graphics_queue);
+    vkGetDeviceQueue(device, indices.present_family, 0, &present_queue);
 
     return true;
 }
@@ -338,26 +347,26 @@ bool Renderer::findQueueFamilies()
     {
         if((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queue_family.queueCount > 0))
         {
-            graphics_family = i;
+            indices.graphics_family = i;
         }
         VkBool32 present_support = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &present_support);
         if(present_support)
         {
-            present_family = i;
+            indices.present_family = i;
         }
-        if(graphics_family != -1 && present_family != -1)
+        if(indices.graphics_family != -1 && indices.present_family != -1)
         {
             break;
         }
         i++;
     }
-    if(graphics_family == -1)
+    if(indices.graphics_family == -1)
     {
         std::cout << "Could not find appropriate graphics queue family!" << std::endl;
         return false;
     }
-    if(present_family == -1)
+    if(indices.present_family == -1)
     {
         std::cout << "Could not find appropriate present queue family!" << std::endl;
         return false;
@@ -366,8 +375,26 @@ bool Renderer::findQueueFamilies()
     return true;
 }
 
+bool Renderer::checkDeviceExtensionSupport(VkPhysicalDevice device)
+{
+    uint32_t extension_count = 0;
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
+    std::vector<VkExtensionProperties> available_extensions(extension_count);
+    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, available_extensions.data());
+
+    std::set<std::string> required_extensions(device_extensions.begin(), device_extensions.end());
+
+    for(const auto& extension : available_extensions)
+    {
+        required_extensions.erase(extension.extensionName);
+    }
+
+    return required_extensions.empty();
+}
+
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 {
+    //For Hello Triangle, GPU only needs to have Vulkan support
     // VkPhysicalDeviceProperties device_properties = {};
     // vkGetPhysicalDeviceProperties(device, &device_properties);
 
@@ -376,9 +403,10 @@ bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 
     // return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
     //     device_features.geometryShader;
-    
-    //For Hello Triangle, GPU only needs to have Vulkan support
-    return true;
+    //QueueFamilyIndices qindices = findQueueFamilies(device);
+    bool extensions_supported = checkDeviceExtensionSupport(device);
+    bool result = indices.isComplete();
+    return extensions_supported && result;
 }
 
 bool Renderer::pickPhysicalDevice()
