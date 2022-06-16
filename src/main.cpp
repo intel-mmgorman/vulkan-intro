@@ -126,6 +126,19 @@ class Renderer
 
 };
 
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& available_formats)
+{
+    for(const auto& available_format : available_formats)
+    {
+        if(available_format == VK_FORMAT_B8G8R8A8_SRGB && available_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            return available_format;
+        }
+    }
+
+    return available_formats[0];
+}
+
 SwapChainSupportDetails Renderer::querySwapChainSupport(VkPhysicalDevice device)
 {
     SwapChainSupportDetails details = {};
