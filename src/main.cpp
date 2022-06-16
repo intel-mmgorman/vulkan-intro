@@ -19,9 +19,9 @@ struct QueueFamilyIndices
 
 struct SwapChainSupportDetails
 {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> present_modes;
+    VkSurfaceCapabilitiesKHR capabilities = {};
+    std::vector<VkSurfaceFormatKHR> formats = {};
+    std::vector<VkPresentModeKHR> present_modes = {};
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -103,6 +103,7 @@ class Renderer
         VkSurfaceKHR surface;
         VkQueue present_queue;
         const std::vector<const char*> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        SwapChainSupportDetails swap_chain_support;
 
         const int screen_width = 1280;
         const int screen_height = 720;
@@ -120,8 +121,34 @@ class Renderer
         bool createLogicalDevice();
         bool createSurface();
         bool checkDeviceExtensionSupport(VkPhysicalDevice);
+        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice);
+
 
 };
+
+SwapChainSupportDetails Renderer::querySwapChainSupport(VkPhysicalDevice device)
+{
+    SwapChainSupportDetails details = {};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    uint32_t format_count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, nullptr);
+    if(format_count != 0)
+    {
+        details.formats.resize(format_count);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, details.formats.data());
+    }
+
+    uint32_t present_mode_count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, nullptr);
+    if(present_mode_count != 0)
+    {
+        details.present_modes.resize(present_mode_count);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, details.present_modes.data());
+    }
+
+    return details;
+}
 
 void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& create_info)
 {
@@ -396,7 +423,13 @@ bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
     //     device_features.geometryShader;
     //QueueFamilyIndices qindices = findQueueFamilies(device);
     bool extensions_supported = checkDeviceExtensionSupport(device);
-    return extensions_supported;
+    bool swap_chain_adequate = false;
+    if(extensions_supported)
+    {
+        swap_chain_support = querySwapChainSupport(device);
+        swap_chain_adequate = !swap_chain_support.formats.empty() && !swap_chain_support.present_modes.empty();
+    }
+    return extensions_supported && swap_chain_adequate;
 }
 
 bool Renderer::pickPhysicalDevice()
