@@ -6,6 +6,9 @@
 #include <set>
 #include <cstring>
 #include <optional>
+#include <cstdint> // Necessary for uint32_t
+#include <limits> // Necessary for std::numeric_limits
+#include <algorithm> // Necessary for std::clamp
 #include <vulkan/vulkan.h>
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -105,8 +108,8 @@ class Renderer
         const std::vector<const char*> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
         SwapChainSupportDetails swap_chain_support;
 
-        const int screen_width = 1280;
-        const int screen_height = 720;
+        const int window_width = 1280;
+        const int window_height = 720;
 
         bool initAndCreateSDLWindow();
         bool createInstance(bool, std::vector<const char*>, const std::vector<const char*>);
@@ -122,6 +125,7 @@ class Renderer
         bool createSurface();
         bool checkDeviceExtensionSupport(VkPhysicalDevice);
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice);
+        VkExtent2D chooseSwapExtent();
 
 
 };
@@ -149,6 +153,30 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
         }
     }
     return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D Renderer::chooseSwapExtent()
+{
+    if(swap_chain_support.capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+    {
+        return swap_chain_support.capabilities.currentExtent;
+    }
+    else
+    {
+        int width = 0;
+        int height = 0;
+        SDL_Vulkan_GetDrawableSize(sdl_window, &width, &height);
+
+        VkExtent2D actual_extent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+        actual_extent.width = std::clamp(actual_extent.width, swap_chain_support.capabilities.minImageExtent.width,
+                                swap_chain_support.capabilities.maxImageExtent.width);
+        actual_extent.height = std::clamp(actual_extent.height, swap_chain_support.capabilities.minImageExtent.height,
+                                swap_chain_support.capabilities.maxImageExtent.height);
+
+        return actual_extent;
+
+    }
+
 }
 
 SwapChainSupportDetails Renderer::querySwapChainSupport(VkPhysicalDevice device)
@@ -330,7 +358,7 @@ bool Renderer::initAndCreateSDLWindow()
         return false;
     }
 
-    sdl_window = SDL_CreateWindow("Vulkan Intro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_width, screen_height, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+    sdl_window = SDL_CreateWindow("Vulkan Intro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_width, window_height, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
     if(sdl_window == nullptr)
     {
         std::cout << "Could not create window: " << SDL_GetError() << std::endl;
