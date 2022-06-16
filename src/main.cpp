@@ -55,6 +55,7 @@ class Renderer
             enable_validation_layers = false;
             physical_device = VK_NULL_HANDLE;
             graphics_family = -1;
+            present_family = -1;
             device = {};
             graphics_queue = {};
             surface = {};
@@ -80,6 +81,7 @@ class Renderer
         bool enable_validation_layers;
         VkPhysicalDevice physical_device;
         uint32_t graphics_family;
+        uint32_t present_family;
         VkDevice device;
         VkQueue graphics_queue;
         VkSurfaceKHR surface;
@@ -328,11 +330,22 @@ bool Renderer::findQueueFamilies()
         {
             graphics_family = i;
         }
+        VkBool32 present_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, i, surface, &present_support);
+        if(present_support)
+        {
+            present_family = i;
+        }
         i++;
     }
     if(graphics_family == -1)
     {
-        std::cout << "Could not find appropriate queue family!" << std::endl;
+        std::cout << "Could not find appropriate graphics queue family!" << std::endl;
+        return false;
+    }
+    if(present_family == -1)
+    {
+        std::cout << "Could not find appropriate present queue family!" << std::endl;
         return false;
     }
 
@@ -420,6 +433,12 @@ bool Renderer::initVulkan()
         return false;
     }
 
+    result = createSurface();
+    if(!result)
+    {
+        return false;
+    }
+
     result = pickPhysicalDevice();
     if(!result)
     {
@@ -433,12 +452,6 @@ bool Renderer::initVulkan()
     }
 
     result = createLogicalDevice();
-    if(!result)
-    {
-        return false;
-    }
-
-    result = createSurface();
     if(!result)
     {
         return false;
