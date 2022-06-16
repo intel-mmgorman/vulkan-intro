@@ -346,6 +346,10 @@ bool Renderer::findQueueFamilies()
         {
             present_family = i;
         }
+        if(graphics_family != -1 && present_family != -1)
+        {
+            break;
+        }
         i++;
     }
     if(graphics_family == -1)
