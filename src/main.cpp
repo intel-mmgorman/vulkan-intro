@@ -88,6 +88,7 @@ class Renderer
             graphics_pipeline = {};
             swap_chain_frame_buffers = {};
             command_pool = {};
+            command_buffer = {};
        }
        ~Renderer()
        {
@@ -141,6 +142,7 @@ class Renderer
         VkPipeline graphics_pipeline;
         std::vector<VkFramebuffer> swap_chain_frame_buffers;
         VkCommandPool command_pool;
+        VkCommandBuffer command_buffer;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -167,8 +169,31 @@ class Renderer
         bool createRenderPass();
         bool createFrameBuffers();
         bool createCommandPool();
+        bool createCommandBuffer();
 
 };
+
+bool recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
+{
+    
+}
+
+bool Renderer::createCommandBuffer()
+{
+    VkCommandBufferAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.commandPool = command_pool;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandBufferCount = 1;
+
+    if(vkAllocateCommandBuffers(device, &alloc_info, &command_buffer) != VK_SUCCESS)
+    {
+        std::cout << "Failed to allocate command buffers!" << std::endl;
+        return false;
+    }
+
+    return true;
+}
 
 bool Renderer::createCommandPool()
 {
@@ -990,6 +1015,11 @@ bool Renderer::initVulkan()
     }
 
     result = createCommandPool();
+    if(!result)
+    {
+        return false;
+    }
+    result = createCommandBuffer();
     if(!result)
     {
         return false;
