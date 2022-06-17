@@ -97,6 +97,7 @@ class Renderer
                 vkDestroyImageView(device, image_view, nullptr);
             }
             vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+            vkDestroyRenderPass(device, render_pass, nullptr);
             vkDestroySwapchainKHR(device, swap_chain, nullptr);
             vkDestroyDevice(device, nullptr);
             vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -177,6 +178,17 @@ bool Renderer::createRenderPass()
     subpass.pColorAttachments = &color_attachment_ref;
 
     VkRenderPassCreateInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_info.attachmentCount = 1;
+    render_pass_info.pAttachments = &color_attachment;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    if(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create render pass!" << std:::endl;
+        return false;
+    }
 
     return true;
 
