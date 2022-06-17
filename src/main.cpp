@@ -86,9 +86,14 @@ class Renderer
             pipeline_layout = {};
             render_pass = {};
             graphics_pipeline = {};
+            swap_chain_frame_buffers = {};
        }
        ~Renderer()
        {
+            for(auto frame_buffer : swap_chain_frame_buffers)
+            {
+                vkDestroyFramebuffer(device, frame_buffer, nullptr);
+            }
             if(enable_validation_layers)
             {
                 DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
@@ -132,6 +137,7 @@ class Renderer
         VkPipelineLayout pipeline_layout;
         VkRenderPass render_pass;
         VkPipeline graphics_pipeline;
+        std::vector<VkFramebuffer> swap_chain_frame_buffers;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -156,8 +162,36 @@ class Renderer
         bool createGraphicsPipeline();
         VkShaderModule createShaderModule(const std::vector<char>&, bool*);
         bool createRenderPass();
+        bool createFrameBuffers();
 
 };
+
+bool Renderer::createFrameBuffers()
+{
+    swap_chain_frame_buffers.resize(swap_chain_image_views.size());
+
+    for(size_t i = 0; i < swap_chain_image_views.size(); i++)
+    {
+        VkImageView attachments[] = {swap_chain_image_views[i]};
+
+        VkFramebufferCreateInfo framebuffer_info = {};
+        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_info.renderPass = render_pass;
+        framebuffer_info.attachmentCount = 1;
+        framebuffer_info.pAttachments = attachments;
+        framebuffer_info.width = swap_chain_extent.width;
+        framebuffer_info.height = swap_chain_extent.height;
+        framebuffer_info.layers = 1;
+
+        if(vkCreateFramebuffer(device, &framebuffer_info, nullptr, &swap_chain_frame_buffers[i]) != VK_SUCCESS)
+        {
+            std::cout << "Failed to create framebuffer!" << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
 
 bool Renderer::createRenderPass()
 {
@@ -925,6 +959,11 @@ bool Renderer::initVulkan()
         return false;
     }
     result = createGraphicsPipeline();
+    if(!result)
+    {
+        return false;
+    }
+    result = createFrameBuffers();
     if(!result)
     {
         return false;
