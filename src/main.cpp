@@ -186,7 +186,7 @@ bool Renderer::createRenderPass()
 
     if(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass) != VK_SUCCESS)
     {
-        std::cout << "Failed to create render pass!" << std:::endl;
+        std::cout << "Failed to create render pass!" << std::endl;
         return false;
     }
 
