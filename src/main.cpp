@@ -9,6 +9,7 @@
 #include <cstdint> // Necessary for uint32_t
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
+#include <fstream>
 #include <vulkan/vulkan.h>
 #include "SDL.h"
 #include "SDL_vulkan.h"
@@ -144,11 +145,75 @@ class Renderer
         bool createSwapChain();
         bool createImageViews();
         bool createGraphicsPipeline();
+        VkShaderModule createShaderModule(const std::vector<char>&, bool*);
 
 };
 
+VkShaderModule Renderer::createShaderModule(const std::vector<char>& code, bool* result)
+{
+    VkShaderModuleCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    create_info.codeSize = code.size();
+    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    VkShaderModule shader_module = {};
+    if(vkCreateShaderModule(device, &create_info, nullptr, &shader_module) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create shader module!" << std::endl;
+        *result = false;
+    }
+
+    *result = true;
+    return shader_module;
+}
+
+static std::vector<char> readFile(const std::string& file_name, bool* result)
+{
+    std::ifstream file(file_name, std::ios::ate | std::ios::binary);
+
+    if(!file.is_open())
+    {
+        std::cout << "Failed to open file: " << file_name << std::endl;
+        *result = false;
+    }
+
+    size_t file_size = (size_t) file.tellg();
+    std::vector<char> buffer(file_size);
+    file.seekg(0);
+    file.read(buffer.data(), file_size);
+    file.close();
+    *result = true;
+    return buffer;
+}
+
 bool Renderer::createGraphicsPipeline()
 {
+    bool result = false;
+    auto vert_shader_code = readFile("shaderssss/vert.spv", &result);
+    if(!result)
+    {
+        return false;
+    }
+    auto frag_shader_code = readFile("shaders/frag.spv", &result);
+    if(!result)
+    {
+        return false;
+    }
+
+    VkShaderModule vert_shader_module = createShaderModule(vert_shader_code, &result);
+    if(!result)
+    {
+        return false;
+    }
+    VkShaderModule frag_shader_module = createShaderModule(frag_shader_code, &result);
+    if(!result)
+    {
+        return false;
+    }
+
+    vkDestroyShaderModule(device, frag_shader_module, nullptr);
+    vkDestroyShaderModule(device, vert_shader_module, nullptr);
+    
     return true;
 }
 
@@ -693,6 +758,11 @@ bool Renderer::initVulkan()
     }
 
     result = createImageViews();
+    if(!result)
+    {
+        return false;
+    }
+    result = createGraphicsPipeline();
     if(!result)
     {
         return false;
