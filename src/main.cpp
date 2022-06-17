@@ -175,7 +175,16 @@ class Renderer
 
 bool recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
 {
-    
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    if(vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
+    {
+        std::cout <, "failed to begin recording command buffer!" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool Renderer::createCommandBuffer()
