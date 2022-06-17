@@ -47,3 +47,5 @@ _deps
 
 .DS_Store
 build
+shaders/vert.spv
+shaders/frag.spv
