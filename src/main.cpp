@@ -78,12 +78,20 @@ class Renderer
             graphics_queue = {};
             surface = {};
             swap_chain = {};
+            swap_chain_images = {};
+            swap_chain_extent = {};
+            swap_chain_image_format = {};
+            swap_chain_image_views = {};
        }
        ~Renderer()
        {
             if(enable_validation_layers)
             {
                 DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
+            }
+            for(auto image_view : swap_chain_image_views)
+            {
+                vkDestroyImageView(device, image_view, nullptr);
             }
             vkDestroySwapchainKHR(device, swap_chain, nullptr);
             vkDestroyDevice(device, nullptr);
@@ -110,6 +118,10 @@ class Renderer
         const std::vector<const char*> device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
         SwapChainSupportDetails swap_chain_support;
         VkSwapchainKHR swap_chain;
+        std::vector<VkImage> swap_chain_images;
+        VkExtent2D swap_chain_extent;
+        VkFormat swap_chain_image_format;
+        std::vector<VkImageView> swap_chain_image_views;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -130,9 +142,46 @@ class Renderer
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice);
         VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR&);
         bool createSwapChain();
-
+        bool createImageViews();
+        bool createGraphicsPipeline();
 
 };
+
+bool Renderer::createGraphicsPipeline()
+{
+
+}
+
+bool Renderer::createImageViews()
+{
+    swap_chain_image_views.resize(swap_chain_images.size());
+
+    for(size_t i = 0; i < swap_chain_images.size(); i++)
+    {
+        VkImageViewCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        create_info.image = swap_chain_images[i];
+        create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        create_info.format = swap_chain_image_format;
+        create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        create_info.subresourceRange.baseMipLevel = 0;
+        create_info.subresourceRange.levelCount = 1;
+        create_info.subresourceRange.baseArrayLayer = 0;
+        create_info.subresourceRange.layerCount = 1;
+
+        if(vkCreateImageView(device, &create_info, nullptr, &swap_chain_image_views[i]) != VK_SUCCESS)
+        {
+            std::cout << "Failed to create image views!" << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& available_formats)
 {
@@ -213,7 +262,8 @@ bool Renderer::createSwapChain()
 
     VkSurfaceFormatKHR surface_format = chooseSwapSurfaceFormat(swap_chain_support.formats);
     VkPresentModeKHR present_mode = chooseSwapPresentMode(swap_chain_support.present_modes);
-    VkExtent2D extent = chooseSwapExtent(swap_chain_support.capabilities);
+    swap_chain_extent = chooseSwapExtent(swap_chain_support.capabilities);
+    swap_chain_image_format = surface_format.format;
 
     uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;
     if(swap_chain_support.capabilities.maxImageCount > 0 && image_count > swap_chain_support.capabilities.maxImageCount)
@@ -227,7 +277,7 @@ bool Renderer::createSwapChain()
     create_info.minImageCount = image_count;
     create_info.imageFormat = surface_format.format;
     create_info.imageColorSpace = surface_format.colorSpace;
-    create_info.imageExtent = extent;
+    create_info.imageExtent = swap_chain_extent;
     create_info.imageArrayLayers = 1;
     create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -255,6 +305,11 @@ bool Renderer::createSwapChain()
         std::cout << "Failed to create swap chain!" << std::endl;
         return false;
     }
+
+    //Retrieve swap chain images
+    vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
+    swap_chain_images.resize(image_count);
+    vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swap_chain_images.data());
 
     return true;
 }
