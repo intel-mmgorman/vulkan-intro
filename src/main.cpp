@@ -170,7 +170,7 @@ class Renderer
         bool createFrameBuffers();
         bool createCommandPool();
         bool createCommandBuffer();
-        bool recordCommandBuffer();
+        bool recordCommandBuffer(VkCommandBuffer, uint32_t);
 
 };
 
@@ -181,7 +181,7 @@ bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t imag
 
     if(vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS)
     {
-        std::cout <, "failed to begin recording command buffer!" << std::endl;
+        std::cout << "failed to begin recording command buffer!" << std::endl;
         return false;
     }
 
@@ -193,7 +193,7 @@ bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t imag
     render_pass_info.renderArea.extent = swap_chain_extent;
     VkClearValue clear_color = {{{0.0f, 0.0f, 1.0f}}};
     render_pass_info.clearValueCount = 1;
-    render_pass_info.pClearValues = clear_color;
+    render_pass_info.pClearValues = &clear_color;
     vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
