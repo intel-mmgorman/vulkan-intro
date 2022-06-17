@@ -84,6 +84,7 @@ class Renderer
             swap_chain_image_format = {};
             swap_chain_image_views = {};
             pipeline_layout = {};
+            render_pass = {};
        }
        ~Renderer()
        {
@@ -126,6 +127,7 @@ class Renderer
         VkFormat swap_chain_image_format;
         std::vector<VkImageView> swap_chain_image_views;
         VkPipelineLayout pipeline_layout;
+        VkRenderPass render_pass;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -173,6 +175,11 @@ bool Renderer::createRenderPass()
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &color_attachment_ref;
+
+    VkRenderPassCreateInfo render_pass_info = {};
+
+    return true;
+
 }
 
 VkShaderModule Renderer::createShaderModule(const std::vector<char>& code, bool* result)
@@ -875,7 +882,7 @@ bool Renderer::initVulkan()
     {
         return false;
     }
-    result = createRenderPass()
+    result = createRenderPass();
     if(!result)
     {
         return false;
