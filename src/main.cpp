@@ -170,10 +170,11 @@ class Renderer
         bool createFrameBuffers();
         bool createCommandPool();
         bool createCommandBuffer();
+        bool recordCommandBuffer();
 
 };
 
-bool recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
+bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
 {
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -183,6 +184,17 @@ bool recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
         std::cout <, "failed to begin recording command buffer!" << std::endl;
         return false;
     }
+
+    VkRenderPassBeginInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    render_pass_info.renderPass = render_pass;
+    render_pass_info.framebuffer = swap_chain_frame_buffers[image_index];
+    render_pass_info.renderArea.offset = {0, 0};
+    render_pass_info.renderArea.extent = swap_chain_extent;
+    VkClearValue clear_color = {{{0.0f, 0.0f, 1.0f}}};
+    render_pass_info.clearValueCount = 1;
+    render_pass_info.pClearValues = clear_color;
+    vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     return true;
 }
