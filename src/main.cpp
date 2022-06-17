@@ -83,6 +83,7 @@ class Renderer
             swap_chain_extent = {};
             swap_chain_image_format = {};
             swap_chain_image_views = {};
+            pipeline_layout = {};
        }
        ~Renderer()
        {
@@ -94,6 +95,7 @@ class Renderer
             {
                 vkDestroyImageView(device, image_view, nullptr);
             }
+            vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
             vkDestroySwapchainKHR(device, swap_chain, nullptr);
             vkDestroyDevice(device, nullptr);
             vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -123,6 +125,7 @@ class Renderer
         VkExtent2D swap_chain_extent;
         VkFormat swap_chain_image_format;
         std::vector<VkImageView> swap_chain_image_views;
+        VkPipelineLayout pipeline_layout;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -146,8 +149,16 @@ class Renderer
         bool createImageViews();
         bool createGraphicsPipeline();
         VkShaderModule createShaderModule(const std::vector<char>&, bool*);
+        bool createRenderPass();
 
 };
+
+bool Renderer::createRenderPass()
+{
+    VkAttachmentDescription color_attachment = {};
+    color_attachment.format = swap_chain_image_format;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+}
 
 VkShaderModule Renderer::createShaderModule(const std::vector<char>& code, bool* result)
 {
@@ -189,7 +200,7 @@ static std::vector<char> readFile(const std::string& file_name, bool* result)
 bool Renderer::createGraphicsPipeline()
 {
     bool result = false;
-    auto vert_shader_code = readFile("shaderssss/vert.spv", &result);
+    auto vert_shader_code = readFile("shaders/vert.spv", &result);
     if(!result)
     {
         return false;
@@ -226,7 +237,7 @@ bool Renderer::createGraphicsPipeline()
     frag_shader_stage_info.module = frag_shader_module;
     frag_shader_stage_info.pName = "main";
 
-    VkPipelineShaderStageCreateInfo shader_stages = {vert_shader_stage_info, frag_shader_stage_info};
+    VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info};
 
     // We are hardcoding vertex data in the shader
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
@@ -279,7 +290,7 @@ bool Renderer::createGraphicsPipeline()
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     multisampling.minSampleShading = 1.0f;
-    multisampling.pSampleMask = mullptr;
+    multisampling.pSampleMask = nullptr;
     multisampling.alphaToCoverageEnable = VK_FALSE;
 
     VkPipelineColorBlendAttachmentState color_blend_attachment = {};
@@ -292,6 +303,14 @@ bool Renderer::createGraphicsPipeline()
     color_blending.logicOpEnable = VK_FALSE;
     color_blending.attachmentCount = 1;
     color_blending.pAttachments = &color_blend_attachment;
+
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    if(vkCreatePipelineLayout(device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create pipeline layout!" << std::endl;
+        return false;
+    }
 
     return true;
 }
@@ -837,6 +856,11 @@ bool Renderer::initVulkan()
     }
 
     result = createImageViews();
+    if(!result)
+    {
+        return false;
+    }
+    result = createRenderPass()
     if(!result)
     {
         return false;
