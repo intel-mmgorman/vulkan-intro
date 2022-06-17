@@ -149,7 +149,7 @@ class Renderer
 
 bool Renderer::createGraphicsPipeline()
 {
-
+    return true;
 }
 
 bool Renderer::createImageViews()
@@ -687,6 +687,12 @@ bool Renderer::initVulkan()
     }
 
     result = createSwapChain();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = createImageViews();
     if(!result)
     {
         return false;
