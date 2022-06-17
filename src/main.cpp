@@ -87,9 +87,11 @@ class Renderer
             render_pass = {};
             graphics_pipeline = {};
             swap_chain_frame_buffers = {};
+            command_pool = {};
        }
        ~Renderer()
        {
+            vkDestroyCommandPool(device, command_pool, nullptr);
             for(auto frame_buffer : swap_chain_frame_buffers)
             {
                 vkDestroyFramebuffer(device, frame_buffer, nullptr);
@@ -138,6 +140,7 @@ class Renderer
         VkRenderPass render_pass;
         VkPipeline graphics_pipeline;
         std::vector<VkFramebuffer> swap_chain_frame_buffers;
+        VkCommandPool command_pool;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -163,8 +166,25 @@ class Renderer
         VkShaderModule createShaderModule(const std::vector<char>&, bool*);
         bool createRenderPass();
         bool createFrameBuffers();
+        bool createCommandPool();
 
 };
+
+bool Renderer::createCommandPool()
+{
+    VkCommandPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    pool_info.queueFamilyIndex = indices.graphics_family;
+
+    if(vkCreateCommandPool(device, &pool_info, nullptr, &command_pool) != VK_SUCCESS)
+    {
+        std::cout << "Failed to create command pool!" << std::endl;
+        return false;
+    }
+
+    return true;
+}
 
 bool Renderer::createFrameBuffers()
 {
@@ -964,6 +984,12 @@ bool Renderer::initVulkan()
         return false;
     }
     result = createFrameBuffers();
+    if(!result)
+    {
+        return false;
+    }
+
+    result = createCommandPool();
     if(!result)
     {
         return false;
