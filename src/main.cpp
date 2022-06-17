@@ -196,6 +196,19 @@ bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t imag
     render_pass_info.pClearValues = clear_color;
     vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+
+    //Draw a triangle!
+    vkCmdDraw(command_buffer, 3, 1, 0, 0);
+
+    vkCmdEndRenderPass(command_buffer);
+
+    if(vkEndCommandBuffer(command_buffer) != VK_SUCCESS)
+    {
+        std::cout << "Failed to record command buffer!" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
