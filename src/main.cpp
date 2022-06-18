@@ -236,6 +236,19 @@ bool Renderer::drawFrame()
         return false;
     }
 
+    // Presentation
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+    VkSwapchainKHR swap_chains[] = {swap_chain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &image_index;
+    present_info.pResults = nullptr;
+
+    vkQueuePresentKHR(present_queue, &present_info);
+
     return true;
 }
 
