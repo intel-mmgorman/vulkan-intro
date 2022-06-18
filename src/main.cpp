@@ -177,7 +177,7 @@ class Renderer
         bool createCommandPool();
         bool createCommandBuffer();
         bool recordCommandBuffer(VkCommandBuffer, uint32_t);
-        void drawFrame();
+        bool drawFrame();
         bool createSyncObjects();
 
 };
@@ -202,7 +202,7 @@ bool Renderer::createSyncObjects()
     return true;
 }
 
-void Renderer::drawFrame()
+bool Renderer::drawFrame()
 {
     // Wait for previous frame
     vkWaitForFences(device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
@@ -215,6 +215,28 @@ void Renderer::drawFrame()
     // Record command buffer
     vkResetCommandBuffer(command_buffer, 0);
     recordCommandBuffer(command_buffer, image_index);
+
+    // Submit command buffer
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSemaphore wait_semaphores[] = {image_available_semaphore};
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &command_buffer;
+    VkSemaphore signal_semaphores[] = {render_finished_semaphore};
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+
+    if(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fence) != VK_SUCCESS)
+    {
+        std::cout << "Failed to submit draw command buffer!" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
@@ -1134,7 +1156,11 @@ int main(int argc, char *argv[])
                 break;
         }
 
-        renderer.drawFrame();
+        result = renderer.drawFrame();
+        if(!result)
+        {
+            running = false;
+        }
     }
     
     SDL_Quit();
