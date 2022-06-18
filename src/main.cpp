@@ -1185,6 +1185,8 @@ int main(int argc, char *argv[])
             running = false;
         }
     }
+
+    vkDeviceWaitIdle(renderer.device);
     
     SDL_Quit();
 
