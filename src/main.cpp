@@ -92,6 +92,9 @@ class Renderer
        }
        ~Renderer()
        {
+            vkDestroySemaphore(device, image_available_semaphore, nullptr);
+            vkDestroySemaphore(device, render_finished_semaphore, nullptr);
+            vkDestroyFence(device, in_flight_fence, nullptr);
             vkDestroyCommandPool(device, command_pool, nullptr);
             for(auto frame_buffer : swap_chain_frame_buffers)
             {
@@ -143,6 +146,9 @@ class Renderer
         std::vector<VkFramebuffer> swap_chain_frame_buffers;
         VkCommandPool command_pool;
         VkCommandBuffer command_buffer;
+        VkSemaphore image_available_semaphore;
+        VkSemaphore render_finished_semaphore;
+        VkFence in_flight_fence;
 
         const int window_width = 1280;
         const int window_height = 720;
@@ -171,8 +177,34 @@ class Renderer
         bool createCommandPool();
         bool createCommandBuffer();
         bool recordCommandBuffer(VkCommandBuffer, uint32_t);
+        void drawFrame();
+        bool createSyncObjects();
 
 };
+
+bool Renderer::createSyncObjects()
+{
+    VkSemaphoreCreateInfo semaphore_info = {};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fence_info = {};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    if(vkCreateSemaphore(device, &semaphore_info, nullptr, &image_available_semaphore) != VK_SUCCESS
+        || vkCreateSemaphore(device, &semaphore_info, nullptr, &render_finished_semaphore) != VK_SUCCESS
+        || vkCreateFence(device, &fence_info, nullptr, &in_flight_fence) != VK_SUCCESS)
+        {
+            std::cout << "Failed to create semaphores!" << std::endl;
+            return false;
+        }
+    
+    return true;
+}
+
+void Renderer::drawFrame()
+{
+
+}
 
 bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
 {
@@ -1058,6 +1090,11 @@ bool Renderer::initVulkan()
     {
         return false;
     }
+    result = createSyncObjects();
+    if(!result)
+    {
+        return false;
+    }
 
     return true;
 }
@@ -1085,6 +1122,8 @@ int main(int argc, char *argv[])
                 running = false;
                 break;
         }
+
+        renderer.drawFrame();
     }
     
     SDL_Quit();
