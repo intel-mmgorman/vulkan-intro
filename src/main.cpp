@@ -189,6 +189,7 @@ bool Renderer::createSyncObjects()
 
     VkFenceCreateInfo fence_info = {};
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT; //If we don't do this, will hang on first pass of drawFrame()
 
     if(vkCreateSemaphore(device, &semaphore_info, nullptr, &image_available_semaphore) != VK_SUCCESS
         || vkCreateSemaphore(device, &semaphore_info, nullptr, &render_finished_semaphore) != VK_SUCCESS
@@ -203,7 +204,13 @@ bool Renderer::createSyncObjects()
 
 void Renderer::drawFrame()
 {
+    // Wait for previous frame
+    vkWaitForFences(device, 1, &in_flight_fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &in_flight_fence);
 
+    // Acquire image from swapchain
+    uint32_t image_index = 0;
+    vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
 }
 
 bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
