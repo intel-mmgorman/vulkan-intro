@@ -211,6 +211,10 @@ void Renderer::drawFrame()
     // Acquire image from swapchain
     uint32_t image_index = 0;
     vkAcquireNextImageKHR(device, swap_chain, UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
+
+    // Record command buffer
+    vkResetCommandBuffer(command_buffer, 0);
+    recordCommandBuffer(command_buffer, image_index);
 }
 
 bool Renderer::recordCommandBuffer(VkCommandBuffer command_buffer, uint32_t image_index)
