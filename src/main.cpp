@@ -150,8 +150,8 @@ class Renderer
         VkSemaphore render_finished_semaphore;
         VkFence in_flight_fence;
 
-        const int window_width = 1280;
-        const int window_height = 720;
+        const int window_width = 1920;
+        const int window_height = 1440;
 
         bool initAndCreateSDLWindow();
         bool createInstance(bool, std::vector<const char*>, const std::vector<const char*>);
